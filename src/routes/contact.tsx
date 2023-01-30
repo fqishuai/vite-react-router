@@ -1,5 +1,5 @@
-import { Form, useLoaderData } from "react-router-dom";
-import { getContact } from '../contacts'
+import { Form, useLoaderData, useFetcher } from "react-router-dom";
+import { getContact, updateContact } from '../contacts'
 
 interface IContact {
   first: string;
@@ -11,7 +11,22 @@ interface IContact {
 }
 
 export async function loader({ params }: {params: any}) {
-  return getContact(params.contactId);
+  console.log('contact loader::', params.contactId)
+  const contact = await getContact(params.contactId);
+  if (!contact) {
+    throw new Response('', {
+      status: 404,
+      statusText: 'Not Found',
+    });
+  }
+  return contact;
+}
+
+export async function action({ request, params }: { request: any, params: any }) {
+  let formData = await request.formData();
+  return updateContact(params.contactId, {
+    favorite: formData.get('favorite') === 'true',
+  })
 }
 
 export default function Contact() {
@@ -85,13 +100,18 @@ export default function Contact() {
 }
 
 function Favorite({ contact }: { contact: IContact }) {
-  // yes, this is a `let` for later
+  const fetcher = useFetcher();
+  
   let favorite = contact.favorite;
+  if (fetcher.formData) { // When the action is done, the fetcher.formData will no longer exist
+    favorite = fetcher.formData.get('favorite') === 'true';
+  }
+
   return (
-    <Form method="post">
+    <fetcher.Form method="post">
       <button
-        name="favorite"
-        value={favorite ? "false" : "true"}
+        name="favorite" // 浏览器可以通过name属性来序列化表单
+        value={favorite ? "false" : "true"} // This form will send formData with a favorite key that's either "true" | "false".
         aria-label={
           favorite
             ? "Remove from favorites"
@@ -100,6 +120,6 @@ function Favorite({ contact }: { contact: IContact }) {
       >
         {favorite ? "★" : "☆"}
       </button>
-    </Form>
+    </fetcher.Form>
   );
 }

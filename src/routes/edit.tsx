@@ -1,4 +1,4 @@
-import { Form, useLoaderData, redirect } from "react-router-dom";
+import { Form, useLoaderData, redirect, useNavigate } from "react-router-dom";
 import { updateContact } from "../contacts";
 
 interface IContact {
@@ -19,6 +19,7 @@ export async function action({ request, params }: { request: any, params: any })
 
 export default function EditContact() {
   const contact = useLoaderData() as IContact;
+  const navigate = useNavigate();
 
   return (
     <Form method="post" id="contact-form">
@@ -68,7 +69,12 @@ export default function EditContact() {
       </label>
       <p>
         <button type="submit">Save</button>
-        <button type="button">Cancel</button>
+        <button
+          type="button" // <button type="button"> 虽然看似多余，但它是防止按钮提交其表单的 HTML 方式。
+          onClick={() => {
+            navigate(-1);
+          }}
+        >Cancel</button>
       </p>
     </Form>
   );

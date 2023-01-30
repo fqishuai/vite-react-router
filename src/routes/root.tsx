@@ -1,11 +1,14 @@
-import { Outlet, Link, useLoaderData, Form, redirect, NavLink } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Outlet, Link, useLoaderData, Form, redirect, NavLink, useNavigation, useSubmit } from 'react-router-dom'
 import { getContacts, createContact } from '../contacts'
 
-export async function loader() {
-  // @ts-ignore
-  const contacts = await getContacts();
+export async function loader({ request }: { request: any }) {
+  const url = new URL(request.url);
+  const q = url.searchParams.get('q');
+  console.log('url param::', q)
+  const contacts = await getContacts(q);
   console.log('root loader::', contacts)
-  return { contacts };
+  return { contacts, q };
 }
 export async function action() {
   const contact = await createContact();
@@ -15,30 +18,60 @@ export async function action() {
 }
 
 export default function Root() {
-  const { contacts } = useLoaderData() as {contacts : any[]};
+  const { contacts, q } = useLoaderData() as {contacts : any[], q: string};
+  const navigation = useNavigation();
+  const submit = useSubmit();
+
+  const searching = navigation.location && new URLSearchParams(navigation.location.search).has('q');
+
+  /*
+  // input为非受控组件时
+  useEffect(() => {
+    const inputValue = document.getElementById('q') as HTMLInputElement;
+    console.log('search input::', inputValue.value, q)
+    inputValue.value = q;
+  }, [q]);
+  */
+
   return (
     <>
       <div id="sidebar">
         <h1>React Router Contacts</h1>
         <div>
-          <form id="search-form" role="search">
-            <input
+          <Form id="search-form" role="search"> {/* form没有指定method则默认为get，意味着当浏览器创建请求时，它不会将表单数据放入请求 POST 主体中，而是放入 GET 请求的 URLSearchParams 中。 */}
+            {/* <input // 非受控组件
               id="q"
               aria-label="Search contacts"
               placeholder="Search"
               type="search"
+              name="q" // 浏览器可以通过input的name属性来序列化表单 ?q=
+              defaultValue={q}
+            /> */}
+            <input
+              id="q"
+              className={searching ? 'loading' : ''}
+              aria-label="Search contacts"
+              placeholder="Search"
+              type="search"
               name="q"
+              defaultValue={q}
+              onChange={(event) => {
+                console.log('input change::', event.currentTarget.form)
+                submit(event.currentTarget.form, {
+                  // replace: !isFirstSearch,
+                });
+              }}
             />
             <div
               id="search-spinner"
               aria-hidden
-              hidden={true}
+              hidden={!searching}
             />
             <div
               className="sr-only"
               aria-live="polite"
             ></div>
-          </form>
+          </Form>
           <Form method="post">
             <button type="submit">New</button>
           </Form>
@@ -96,7 +129,10 @@ export default function Root() {
           </ul> */}
         </nav>
       </div>
-      <div id="detail">
+      <div
+        id="detail"
+        className={navigation.state === 'loading' ? 'loading' : ''}
+      >
         <Outlet />
       </div>
     </>
